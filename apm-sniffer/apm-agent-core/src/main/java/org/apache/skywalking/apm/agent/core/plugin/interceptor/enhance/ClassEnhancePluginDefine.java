@@ -86,7 +86,9 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
     private DynamicType.Builder<?> enhanceInstance(TypeDescription typeDescription,
         DynamicType.Builder<?> newClassBuilder, ClassLoader classLoader,
         EnhanceContext context) throws PluginException {
+        // 获得构造方法拦截点
         ConstructorInterceptPoint[] constructorInterceptPoints = getConstructorsInterceptPoints();
+        // 获得实例方法拦截点
         InstanceMethodsInterceptPoint[] instanceMethodsInterceptPoints = getInstanceMethodsInterceptPoints();
         String enhanceOriginClassName = typeDescription.getTypeName();
         boolean existedConstructorInterceptPoint = false;
@@ -116,11 +118,15 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
          *
          */
         if (!typeDescription.isAssignableTo(EnhancedInstance.class)) {
+            // EnhanceContext记录了整个增强过程中的上下文信息，里面就两个boolean值
             if (!context.isObjectExtended()) {
                 newClassBuilder = newClassBuilder.defineField(
+                        // 定义一个字段 类型 object ,privite volatile 方法,属性名 _$EnhancedClassField_ws
                     CONTEXT_ATTR_NAME, Object.class, ACC_PRIVATE | ACC_VOLATILE)
+                        // 实现EnhancedInstance接口
                                                  .implement(EnhancedInstance.class)
                                                  .intercept(FieldAccessor.ofField(CONTEXT_ATTR_NAME));
+                // 打标记,扩展对象完成
                 context.extendObjectCompleted();
             }
         }
@@ -196,6 +202,7 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
      */
     private DynamicType.Builder<?> enhanceClass(TypeDescription typeDescription, DynamicType.Builder<?> newClassBuilder,
         ClassLoader classLoader) throws PluginException {
+        // 获得静态方法的拦截点
         StaticMethodsInterceptPoint[] staticMethodsInterceptPoints = getStaticMethodsInterceptPoints();
         String enhanceOriginClassName = typeDescription.getTypeName();
         if (staticMethodsInterceptPoints == null || staticMethodsInterceptPoints.length == 0) {
@@ -208,7 +215,9 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
                 throw new EnhanceException("no StaticMethodsAroundInterceptor define to enhance class " + enhanceOriginClassName);
             }
 
+            // 是否需要修改参数
             if (staticMethodsInterceptPoint.isOverrideArgs()) {
+                // 增强方法并修改参数
                 if (isBootstrapInstrumentation()) {
                     newClassBuilder = newClassBuilder.method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher()))
                                                      .intercept(MethodDelegation.withDefaultConfiguration()
@@ -221,6 +230,7 @@ public abstract class ClassEnhancePluginDefine extends AbstractClassEnhancePlugi
                                                                                 .to(new StaticMethodsInterWithOverrideArgs(interceptor)));
                 }
             } else {
+                // 增强方法
                 if (isBootstrapInstrumentation()) {
                     newClassBuilder = newClassBuilder.method(isStatic().and(staticMethodsInterceptPoint.getMethodsMatcher()))
                                                      .intercept(MethodDelegation.withDefaultConfiguration()
